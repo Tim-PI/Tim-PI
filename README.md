@@ -13,6 +13,7 @@ Things you can do with this currently are:
 - Look up & purchase shares of contracts you don't currently own
 
 INSTALLATION:
+
 1. Go to https://www.python.org/downloads/
 
 2. Click "Download Python 3.6.0"
