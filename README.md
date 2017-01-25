@@ -37,4 +37,5 @@ TODO:
 * <s>Look up & purchase shares of contracts you don't currently own</s> - added 1/25/2017!
 
 HOW YOU CAN HELP:
+
 report all exceptions!  Include as much info as possible and please check to make sure that you are using valid login info and whatnot if you're copying over from the examples.  Also, *any* feedback is useful! 
