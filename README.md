@@ -39,3 +39,8 @@ TODO:
 HOW YOU CAN HELP:
 
 report all exceptions!  Include as much info as possible and please check to make sure that you are using valid login info and whatnot if you're copying over from the examples.  Also, *any* feedback is useful! 
+
+WARNINGS:
+
+I've been posting about this over on PredictIt and a few people there have informed me that this kind of stuff isn't allowed by their TOS. Frankly, because everything in the API is done the same way it would be on the site, I really doubt that they could ever figure it out - also, I've been using it to buy/sell on my account frequently and haven't been banned - but I thought I should mention that it is possible according to their TOS that this is not allowed.  I'm still going to develop it and they can send all the C&Ds they want, but I would feel pretty bad if I got someone else's account banned when they thought they were safe using something I wrote.
+
