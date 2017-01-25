@@ -2,12 +2,21 @@ import datetime
 import mechanicalsoup
 import re
 
+
+def chunks(l, n):
+    for i in range(0, len(l), n):
+        yield l[i:i + n]
+
+
 class Contract:
-    def __init__(self, market, cid, name, type_, shares, avg_price, buy_offers, sell_offers, gain_loss, latest, buy, sell):
+    def __init__(self, market, cid, name, type_, shares, avg_price,
+                 buy_offers, sell_offers, gain_loss, latest, buy, sell):
         self.timestamp = datetime.datetime.now()
         self.market = market
         self.cid = cid
         self.name = name
+        if self.market == self.name:
+            self.name = type_.title()
         self.type_ = type_
         self.number_of_shares = int(shares)
         self.avg_price = avg_price
@@ -62,6 +71,8 @@ class Contract:
 
     @property
     def implied_odds(self):
+        """Implied odds of a contract are what a given resolution
+         in a market is being bought for currently."""
         return f"The implied odds of this contract resolving to {self.type_} are {self.buy.replace('¢', '%')}"
 
     def summary(self):
@@ -80,6 +91,7 @@ class Contract:
         print('-----')
 
     def update(self, api):
+        """Updates contract info."""
         my_shares = api.authed_session.get('https://www.predictit.org/Profile/GetSharesAjax')
         for market in my_shares.soup.find_all('table', class_='table table-striped table-center'):
             market_title = market.previous_element.previous_element.find('div', class_='outcome-title').find('a').get(
@@ -89,9 +101,9 @@ class Contract:
                     "\n", "").replace("    ", "").replace('\r', '') for i in market.find_all('td')]
                 market_data_lists = [market_data[x:x + 10] for x in range(0, len(market_data), 10)]
                 cid = None
-                for list in market_data_lists:
+                for list_ in market_data_lists:
                     parsed_market_data = [market_title]
-                    for string in list:
+                    for string in list_:
                         try:
                             cid = re.search(
                                 pattern='#\w+\-(\d+)', string=string
@@ -114,21 +126,26 @@ class Contract:
                 continue
 
     def buy_shares(self, api, number_of_shares, buy_price):
-        if self.type_.lower() == 'no':
+        if self.type_.lower() == 'no' or 'short':
             type_, id_ = 'Short', '0'
-        elif self.type_.lower() == 'yes':
+        elif self.type_.lower() == 'yes' or 'long':
             type_, id_ = 'Long', '1'
         load_side_page = api.browser.get(f'https://www.predictit.org/Trade/LoadBuy{type_}?contractId={self.cid}')
         token = load_side_page.soup.find('input', attrs={'name': '__RequestVerificationToken'}).get('value')
         r = api.browser.post('https://www.predictit.org/Trade/SubmitTrade',
-                              {'__RequestVerificationToken': token,
-                               'BuySellViewModel.ContractId': self.cid,
-                               'BuySellViewModel.TradeType': id_,
-                               'BuySellViewModel.Quantity': number_of_shares,
-                               'BuySellViewModel.PricePerShare': f'{float(buy_price)}',
-                               'X-Requested-With': 'XMLHttpRequest'})
+                             {'__RequestVerificationToken': token,
+                              'BuySellViewModel.ContractId': self.cid,
+                              'BuySellViewModel.TradeType': id_,
+                              'BuySellViewModel.Quantity': number_of_shares,
+                              'BuySellViewModel.PricePerShare': f'{float(buy_price)}',
+                              'X-Requested-With': 'XMLHttpRequest'})
         if str(r.status_code) == '200':
-            print('Purchase successful!')
+            if 'Confirmation Pending' in str(r.content):
+                print('Purchase offer successful!')
+            elif 'You do not have sufficient funds to make this offer' in str(r.content):
+                print('You do not have sufficient funds to make this offer!')
+            else:
+                print(r.content)
 
     def sell_shares(self, api, number_of_shares, sell_price):
         if self.type_.lower() == 'no':
@@ -138,15 +155,14 @@ class Contract:
         load_side_page = api.browser.get(f'https://www.predictit.org/Trade/LoadSell{type_}?contractId={self.cid}')
         token = load_side_page.soup.find('input', attrs={'name': '__RequestVerificationToken'}).get('value')
         r = api.browser.post('https://www.predictit.org/Trade/SubmitTrade',
-                              {'__RequestVerificationToken': token,
-                               'BuySellViewModel.ContractId': self.cid,
-                               'BuySellViewModel.TradeType': id_,
-                               'BuySellViewModel.Quantity': number_of_shares,
-                               'BuySellViewModel.PricePerShare': f'{float(sell_price)}',
-                               'X-Requested-With': 'XMLHttpRequest'})
+                             {'__RequestVerificationToken': token,
+                              'BuySellViewModel.ContractId': self.cid,
+                              'BuySellViewModel.TradeType': id_,
+                              'BuySellViewModel.Quantity': number_of_shares,
+                              'BuySellViewModel.PricePerShare': f'{float(sell_price)}',
+                              'X-Requested-With': 'XMLHttpRequest'})
         if str(r.status_code) == '200':
             print('Sale successful!')
-
 
     def __str__(self):
         return f"{self.market}, {self.name}, {self.type_}, {self.shares}, {self.average_price}, {self.buy_offers},{self.sell_offers}, {self.gain_loss}, {self.latest}, {self.buy}, {self.sell}"
@@ -156,26 +172,47 @@ class pyredictit:
     def __init__(self):
         self.my_contracts = None
         self.gain_loss = None
+        self.available = None
+        self.invested = None
         self.browser = mechanicalsoup.Browser()
-        self.authed_session = self.create_authed_session
+
+    def update_balances(self):
+        my_shares_page = self.browser.get('https://www.predictit.org/Profile/MyShares')
+        self.available = my_shares_page.soup.find("span", class_="SPBalance").text
+        self.gain_loss = my_shares_page.soup.find("span", class_='SPShares').text
+        self.invested = my_shares_page.soup.find("span", class_="SPPortfolio").text
+
+    def money_available(self):
+        self.update_balances()
+        print(f"You have {self.available} available.")
 
     def current_gain_loss(self):
-        my_shares_page = self.browser.get('https://www.predictit.org/Profile/MyShares')
-        self.gain_loss = my_shares_page.soup.find("span", class_='SPShares').text
-        print(self.gain_loss)
+        self.update_balances()
+        if '-' in self.gain_loss:
+            print(f"You've lost {self.gain_loss[1:]}.")
+        else:
+            print(f"You've gained {self.gain_loss[1:]}.")
 
+    def money_invested(self):
+        self.update_balances()
+        print(f"You have {self.invested} currently invested in contracts.")
 
     def create_authed_session(self, username, password):
+        """
+
+        :type username: str
+        :type password: str
+        """
         login_page = self.browser.get('https://www.predictit.org/')
         login_form = login_page.soup.find('form', id='loginForm')
         login_form.select('#Email')[0]['value'] = username
         login_form.select('#Password')[0]['value'] = password
-        logged_in_session = self.browser.submit(login_form, login_page.url)
+        self.browser.submit(login_form, login_page.url)
         return self.browser
 
     def get_my_contracts(self):
         self.my_contracts = []
-        my_shares = self.authed_session.get('https://www.predictit.org/Profile/GetSharesAjax')
+        my_shares = self.browser.get('https://www.predictit.org/Profile/GetSharesAjax')
         for market in my_shares.soup.find_all('table', class_='table table-striped table-center'):
             market_title = market.previous_element.previous_element.find('div', class_='outcome-title').find('a').get(
                 'title')
@@ -183,9 +220,9 @@ class pyredictit:
                 "\n", "").replace("    ", "").replace('\r', '') for i in market.find_all('td')]
             market_data_lists = [market_data[x:x + 10] for x in range(0, len(market_data), 10)]
             cid = None
-            for list in market_data_lists:
+            for list_ in market_data_lists:
                 parsed_market_data = [market_title]
-                for string in list:
+                for string in list_:
                     try:
                         cid = re.search(
                             pattern='#\w+\-(\d+)', string=string
@@ -201,26 +238,84 @@ class pyredictit:
                 self.my_contracts.append(contract)
 
     def list_my_contracts(self):
-        for contract in self.my_contracts:
-            print('------')
-            print(contract.timestamp)
-            print(contract.market)
-            print(contract.name)
-            print(contract.shares)
-            print(contract.gain_or_loss)
-            print(contract.average_price)
-            print(contract.buy_price)
-            print(contract.sell_price)
-            print(contract.estimate_sale_of_current_shares)
-            print(contract.implied_odds)
-            print(contract.estimate_best_result)
-            print('------')
+        self.get_my_contracts()
+        try:
+            for contract in self.my_contracts:
+                print('------')
+                print(contract.timestamp)
+                print(contract.market)
+                print(contract.name)
+                print(contract.shares)
+                print(contract.gain_or_loss)
+                print(contract.average_price)
+                print(contract.buy_price)
+                print(contract.sell_price)
+                print(contract.estimate_sale_of_current_shares)
+                print(contract.implied_odds)
+                print(contract.estimate_best_result)
+                print('------')
+        except TypeError:
+            print('You don\'t have any active contracts!')
+            return
 
-def chunks(l, n):
-    for i in range(0, len(l), n):
-        yield l[i:i + n]
-
-if __name__ == '__main__':
-    predict_it_api = pyredictit()
-    predict_it_api.create_authed_session()
-    predict_it_api.get_my_contracts()
+    def search_for_contracts(self, market, buy_sell, type_, contracts=None):
+        """
+        Search for contracts that aren't currently owned and add them to
+        the contracts list, which is created if it isn't supplied.
+        :param market: dict
+        :param buy_sell: str
+        :param type_: str
+        :param contracts: list
+        :return: list, contracts
+        """
+        if not contracts:
+            contracts = []
+        if type_.lower() in ['yes', 'long'] and buy_sell == 'buy':
+            type_ = {'long': 'BestBuyYesCost'}
+        elif type_.lower() in ['no', 'short'] and buy_sell == 'buy':
+            type_ = {'short': 'BestBuyNoCost'}
+        elif type_.lower() in ['yes', 'long'] and buy_sell == 'sell':
+            type_ = {'long': 'BestSellYesCost'}
+        elif type_.lower() in ['no', 'short'] and buy_sell == 'sell':
+            type_ = {'short': 'BestSellNoCost'}
+        if 'us' and 'election' in market.replace('.', '').lower():
+            market_link = 'https://www.predictit.org/api/marketdata/category/6'
+        elif 'us' and 'politic' in market.replace('.', '').lower():
+            market_link = 'https://www.predictit.org/api/marketdata/category/13'
+        elif 'world' in market.lower():
+            market_link = 'https://www.predictit.org/api/marketdata/category/4'
+        else:
+            print('Invalid market selected.')
+            return
+        raw_market_data = self.browser.get(market_link).json()['Markets']
+        for market in raw_market_data:
+            for contract in market['Contracts']:
+                if list(type_.keys())[0].title() == 'Long' and buy_sell == 'sell':
+                    new_contract = Contract(type_='long', sell=contract[list(type_.values())[0]], buy='0.00',
+                                            buy_offers=0, sell_offers=0, avg_price='0.00', gain_loss='0.00',
+                                            latest=contract['LastTradePrice'], market=market['Name'],
+                                            name=contract['Name'], shares='0', cid=contract['ID']
+                                            )
+                    contracts.append(new_contract)
+                elif list(type_.keys())[0].title() == 'Short' and buy_sell == 'sell':
+                    new_contract = Contract(type_='short', sell=contract[list(type_.values())[0]], buy='0.00',
+                                            buy_offers=0, sell_offers=0, avg_price='0.00', gain_loss='0.00',
+                                            latest=contract['LastTradePrice'], market=market['Name'],
+                                            name=contract['Name'], shares='0', cid=contract['ID']
+                                            )
+                    contracts.append(new_contract)
+                elif list(type_.keys())[0].title() == 'Long' and buy_sell == 'buy':
+                    new_contract = Contract(type_='long', sell='0.00', buy=contract[list(type_.values())[0]],
+                                            buy_offers=0, sell_offers=0, avg_price='0.00', gain_loss='0.00',
+                                            latest=contract['LastTradePrice'], market=market['Name'],
+                                            name=contract['Name'], shares='0', cid=contract['ID']
+                                            )
+                    contracts.append(new_contract)
+                elif list(type_.keys())[0].title() == 'Short' and buy_sell == 'buy':
+                    new_contract = Contract(type_='short', sell='0.00', buy=contract[list(type_.values())[0]],
+                                            buy_offers=0, sell_offers=0, avg_price='0.00', gain_loss='0.00',
+                                            latest=contract['LastTradePrice'], market=market['Name'],
+                                            name=contract['Name'], shares='0', cid=contract['ID']
+                                            )
+                    contracts.append(new_contract)
+        return contracts
