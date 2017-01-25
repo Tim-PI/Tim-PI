@@ -10,9 +10,10 @@ Things you can do with this currently are:
 - Find out how much you'd make if you sold all of your shares in a market
 - Find out what you would make (or lose) depending on how the contract resolves
 - Summarize all of your current contracts.
+- Look up & purchase shares of contracts you don't currently own
 
 TODO:
 * C O M M E N T S
 * T E S T S
-* Look up & purchase shares of contracts you don't currently own
 * Check volumes and current prices
+* <s>Look up & purchase shares of contracts you don't currently own</s> - added 1/25/2017!
