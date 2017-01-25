@@ -142,6 +142,8 @@ class Contract:
         if str(r.status_code) == '200':
             if 'Confirmation Pending' in str(r.content):
                 print('Purchase offer successful!')
+            elif 'You do not have sufficient funds to make this offer' in str(r.content):
+                print('You do not have sufficient funds to make this offer!')
             else:
                 print(r.content)
 
@@ -254,16 +256,16 @@ class pyredictit:
     def search_for_contracts(self, market, buy_sell, type_, contracts=None):
         if not contracts:
             contracts = []
-        if type_.lower() == 'yes' or 'long' and buy_sell == 'buy':
+        if type_.lower() in ['yes', 'long'] and buy_sell == 'buy':
             type_ = {'long': 'BestBuyYesCost'}
             sell = False
-        elif type_.lower() == 'no' or 'short' and buy_sell == 'buy':
+        elif type_.lower() in ['no', 'short'] and buy_sell == 'buy':
             type_ = {'short': 'BestBuyNoCost'}
             sell = False
-        elif type_.lower() == 'yes' or 'long' and buy_sell == 'sell':
+        elif type_.lower() in ['yes', 'long'] and buy_sell == 'sell':
             type_ = {'long': 'BestSellYesCost'}
             sell = True
-        elif type_.lower() == 'no' or 'short' and buy_sell == 'sell':
+        elif type_.lower() in ['no', 'short'] and buy_sell == 'sell':
             type_ = {'short': 'BestSellNoCost'}
             sell = True
         if 'us' and 'election' in market.replace('.', '').lower():
@@ -278,10 +280,24 @@ class pyredictit:
         raw_market_data = self.browser.get(market_link).json()['Markets']
         for market in raw_market_data:
             for contract in market['Contracts']:
-                if list(type_.keys())[0] == 'long':
+                if list(type_.keys())[0].title() == 'Long' and buy_sell == 'sell':
                     new_contract = Contract(type_='long', sell=contract[list(type_.values())[0]], buy='0.00', buy_offers=0,
                                             sell_offers=0, avg_price='0.00', gain_loss='0.00', latest=contract['LastTradePrice'],
                                             market=market['Name'], name=contract['Name'], shares='0', cid=contract['ID'])
                     contracts.append(new_contract)
+                elif list(type_.keys())[0].title() == 'Short' and buy_sell == 'sell':
+                    new_contract = Contract(type_='short', sell=contract[list(type_.values())[0]], buy='0.00', buy_offers=0,
+                                            sell_offers=0, avg_price='0.00', gain_loss='0.00', latest=contract['LastTradePrice'],
+                                            market=market['Name'], name=contract['Name'], shares='0', cid=contract['ID'])
+                    contracts.append(new_contract)
+                elif list(type_.keys())[0].title() == 'Long' and buy_sell == 'buy':
+                    new_contract = Contract(type_='long', sell='0.00', buy=contract[list(type_.values())[0]], buy_offers=0,
+                                            sell_offers=0, avg_price='0.00', gain_loss='0.00', latest=contract['LastTradePrice'],
+                                            market=market['Name'], name=contract['Name'], shares='0', cid=contract['ID'])
+                    contracts.append(new_contract)
+                elif list(type_.keys())[0].title() == 'Short' and buy_sell == 'buy':
+                    new_contract = Contract(type_='short', sell='0.00', buy=contract[list(type_.values())[0]], buy_offers=0,
+                                            sell_offers=0, avg_price='0.00', gain_loss='0.00', latest=contract['LastTradePrice'],
+                                            market=market['Name'], name=contract['Name'], shares='0', cid=contract['ID'])
+                    contracts.append(new_contract)
         return contracts
-
