@@ -101,9 +101,9 @@ class Contract:
                     "\n", "").replace("    ", "").replace('\r', '') for i in market.find_all('td')]
                 market_data_lists = [market_data[x:x + 10] for x in range(0, len(market_data), 10)]
                 cid = None
-                for list in market_data_lists:
+                for list_ in market_data_lists:
                     parsed_market_data = [market_title]
-                    for string in list:
+                    for string in list_:
                         try:
                             cid = re.search(
                                 pattern='#\w+\-(\d+)', string=string
@@ -198,6 +198,11 @@ class pyredictit:
         print(f"You have {self.invested} currently invested in contracts.")
 
     def create_authed_session(self, username, password):
+        """
+
+        :type username: str
+        :type password: str
+        """
         login_page = self.browser.get('https://www.predictit.org/')
         login_form = login_page.soup.find('form', id='loginForm')
         login_form.select('#Email')[0]['value'] = username
@@ -215,9 +220,9 @@ class pyredictit:
                 "\n", "").replace("    ", "").replace('\r', '') for i in market.find_all('td')]
             market_data_lists = [market_data[x:x + 10] for x in range(0, len(market_data), 10)]
             cid = None
-            for list in market_data_lists:
+            for list_ in market_data_lists:
                 parsed_market_data = [market_title]
-                for string in list:
+                for string in list_:
                     try:
                         cid = re.search(
                             pattern='#\w+\-(\d+)', string=string
@@ -254,20 +259,25 @@ class pyredictit:
             return
 
     def search_for_contracts(self, market, buy_sell, type_, contracts=None):
+        """
+        Search for contracts that aren't currently owned and add them to
+        the contracts list, which is created if it isn't supplied.
+        :param market: dict
+        :param buy_sell: str
+        :param type_: str
+        :param contracts: list
+        :return: list, contracts
+        """
         if not contracts:
             contracts = []
         if type_.lower() in ['yes', 'long'] and buy_sell == 'buy':
             type_ = {'long': 'BestBuyYesCost'}
-            sell = False
         elif type_.lower() in ['no', 'short'] and buy_sell == 'buy':
             type_ = {'short': 'BestBuyNoCost'}
-            sell = False
         elif type_.lower() in ['yes', 'long'] and buy_sell == 'sell':
             type_ = {'long': 'BestSellYesCost'}
-            sell = True
         elif type_.lower() in ['no', 'short'] and buy_sell == 'sell':
             type_ = {'short': 'BestSellNoCost'}
-            sell = True
         if 'us' and 'election' in market.replace('.', '').lower():
             market_link = 'https://www.predictit.org/api/marketdata/category/6'
         elif 'us' and 'politic' in market.replace('.', '').lower():
@@ -281,23 +291,31 @@ class pyredictit:
         for market in raw_market_data:
             for contract in market['Contracts']:
                 if list(type_.keys())[0].title() == 'Long' and buy_sell == 'sell':
-                    new_contract = Contract(type_='long', sell=contract[list(type_.values())[0]], buy='0.00', buy_offers=0,
-                                            sell_offers=0, avg_price='0.00', gain_loss='0.00', latest=contract['LastTradePrice'],
-                                            market=market['Name'], name=contract['Name'], shares='0', cid=contract['ID'])
+                    new_contract = Contract(type_='long', sell=contract[list(type_.values())[0]], buy='0.00',
+                                            buy_offers=0, sell_offers=0, avg_price='0.00', gain_loss='0.00',
+                                            latest=contract['LastTradePrice'], market=market['Name'],
+                                            name=contract['Name'], shares='0', cid=contract['ID']
+                                            )
                     contracts.append(new_contract)
                 elif list(type_.keys())[0].title() == 'Short' and buy_sell == 'sell':
-                    new_contract = Contract(type_='short', sell=contract[list(type_.values())[0]], buy='0.00', buy_offers=0,
-                                            sell_offers=0, avg_price='0.00', gain_loss='0.00', latest=contract['LastTradePrice'],
-                                            market=market['Name'], name=contract['Name'], shares='0', cid=contract['ID'])
+                    new_contract = Contract(type_='short', sell=contract[list(type_.values())[0]], buy='0.00',
+                                            buy_offers=0, sell_offers=0, avg_price='0.00', gain_loss='0.00',
+                                            latest=contract['LastTradePrice'], market=market['Name'],
+                                            name=contract['Name'], shares='0', cid=contract['ID']
+                                            )
                     contracts.append(new_contract)
                 elif list(type_.keys())[0].title() == 'Long' and buy_sell == 'buy':
-                    new_contract = Contract(type_='long', sell='0.00', buy=contract[list(type_.values())[0]], buy_offers=0,
-                                            sell_offers=0, avg_price='0.00', gain_loss='0.00', latest=contract['LastTradePrice'],
-                                            market=market['Name'], name=contract['Name'], shares='0', cid=contract['ID'])
+                    new_contract = Contract(type_='long', sell='0.00', buy=contract[list(type_.values())[0]],
+                                            buy_offers=0, sell_offers=0, avg_price='0.00', gain_loss='0.00',
+                                            latest=contract['LastTradePrice'], market=market['Name'],
+                                            name=contract['Name'], shares='0', cid=contract['ID']
+                                            )
                     contracts.append(new_contract)
                 elif list(type_.keys())[0].title() == 'Short' and buy_sell == 'buy':
-                    new_contract = Contract(type_='short', sell='0.00', buy=contract[list(type_.values())[0]], buy_offers=0,
-                                            sell_offers=0, avg_price='0.00', gain_loss='0.00', latest=contract['LastTradePrice'],
-                                            market=market['Name'], name=contract['Name'], shares='0', cid=contract['ID'])
+                    new_contract = Contract(type_='short', sell='0.00', buy=contract[list(type_.values())[0]],
+                                            buy_offers=0, sell_offers=0, avg_price='0.00', gain_loss='0.00',
+                                            latest=contract['LastTradePrice'], market=market['Name'],
+                                            name=contract['Name'], shares='0', cid=contract['ID']
+                                            )
                     contracts.append(new_contract)
         return contracts
