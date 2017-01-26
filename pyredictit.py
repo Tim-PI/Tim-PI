@@ -93,40 +93,6 @@ class Contract:
         print(self.estimate_best_result)
         print('-----')
 
-    def update(self, api):
-        """Updates contract info."""
-        my_shares = api.browser.get('https://www.predictit.org/Profile/GetSharesAjax')
-        for market in my_shares.soup.find_all('table', class_='table table-striped table-center'):
-            market_title = market.previous_element.previous_element.find('div', class_='outcome-title').find('a').get(
-                'title')
-            if market_title == self.market:
-                market_data = [i.text.strip().replace(
-                    "\n", "").replace("    ", "").replace('\r', '') for i in market.find_all('td')]
-                market_data_lists = [market_data[x:x + 10] for x in range(0, len(market_data), 10)]
-                cid = None
-                for list_ in market_data_lists:
-                    parsed_market_data = [market_title]
-                    for string in list_:
-                        try:
-                            cid = re.search(
-                                pattern='#\w+\-(\d+)', string=string
-                            ).group(1)
-                            string = re.search(
-                                pattern='(.*)\$\(.*\)\;', string=string
-                            ).group(1)
-                        except AttributeError:
-                            pass
-                        parsed_market_data.append(string)
-                    parsed_market_data.insert(1, cid)
-                    self.timestamp = datetime.datetime.now()
-                    self.avg_price = parsed_market_data[5]
-                    self.gain_loss = parsed_market_data[8]
-                    self.latest = parsed_market_data[9]
-                    self.buy = parsed_market_data[-2]
-                    self.sell = parsed_market_data[-1]
-                    break
-            else:
-                continue
 
     def buy_shares(self, api, number_of_shares, buy_price):
         if self.type_.lower() == 'no' or 'short':
@@ -214,6 +180,27 @@ class pyredictit:
         self.browser.submit(login_form, login_page.url)
         return self.browser
 
+    def trigger_stop_loss(self, contract, number_of_shares, trigger_price):
+        contract.sell(api=self, number_of_shares=number_of_shares, sell_price=trigger_price)
+
+    def monitor_price_of_contract(self, contract, trigger_price, monitor_type, number_of_shares=None):
+        while True:
+            contract.update(self)
+            if monitor_type == 'stop_loss':
+                if contract.latest <= trigger_price:
+                    contract.sell(api=self, number_of_shares=number_of_shares, sell_price=trigger_price)
+            elif monitor_type == 'buy_at':
+                if contract.latest <= trigger_price:
+                    contract.buy(api=self, number_of_shares=number_of_shares, sell_price=trigger_price)
+            elif monitor_type == 'generic':
+                print(contract.latest)
+        return contract
+
+    def set_stop_loss(self, contract, stop_loss):
+        while True:
+            sleep(2)
+            contract = self.monitor_price_of_contract(contract)
+
     def get_my_contracts(self):
         self.my_contracts = []
         my_shares = self.browser.get('https://www.predictit.org/Profile/GetSharesAjax')
@@ -245,6 +232,41 @@ class pyredictit:
                 parsed_market_data.append(ticker)
                 contract = Contract(*parsed_market_data)
                 self.my_contracts.append(contract)
+
+    def update_my_contracts(self):
+        """Updates contract info."""
+        my_shares = self.browser.get('https://www.predictit.org/Profile/GetSharesAjax')
+        for market in my_shares.soup.find_all('table', class_='table table-striped table-center'):
+            market_title = market.previous_element.previous_element.find('div', class_='outcome-title').find('a').get(
+                'title')
+            for contract in self.my_contracts:
+                if market_title == contract.market:
+                    market_data = [i.text.strip().replace(
+                        "\n", "").replace("    ", "").replace('\r', '') for i in market.find_all('td')]
+                    market_data_lists = [market_data[x:x + 10] for x in range(0, len(market_data), 10)]
+                    cid = None
+                    for list_ in market_data_lists:
+                        parsed_market_data = [market_title]
+                        for string in list_:
+                            try:
+                                cid = re.search(
+                                    pattern='#\w+\-(\d+)', string=string
+                                ).group(1)
+                                string = re.search(
+                                    pattern='(.*)\$\(.*\)\;', string=string
+                                ).group(1)
+                            except AttributeError:
+                                pass
+                            parsed_market_data.append(string)
+                        parsed_market_data.insert(1, cid)
+                        self.timestamp = datetime.datetime.now()
+                        self.avg_price = parsed_market_data[5]
+                        self.gain_loss = parsed_market_data[8]
+                        self.latest = parsed_market_data[9]
+                        self.buy = parsed_market_data[-2]
+                        self.sell = parsed_market_data[-1]
+            else:
+                continue
 
     def list_my_contracts(self):
         self.get_my_contracts()
