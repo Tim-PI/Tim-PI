@@ -94,7 +94,7 @@ class Contract:
 
     def update(self, api):
         """Updates contract info."""
-        my_shares = api.authed_session.get('https://www.predictit.org/Profile/GetSharesAjax')
+        my_shares = api.browser.get('https://www.predictit.org/Profile/GetSharesAjax')
         for market in my_shares.soup.find_all('table', class_='table table-striped table-center'):
             market_title = market.previous_element.previous_element.find('div', class_='outcome-title').find('a').get(
                 'title')
@@ -212,8 +212,9 @@ class pyredictit:
         self.browser.submit(login_form, login_page.url)
         return self.browser
 
-    def monitor_price_of_contract(self, contract_id):
-        return
+    def monitor_price_of_contract(self, contract):
+        contract.update(self)
+        return contract
 
     def get_my_contracts(self):
         self.my_contracts = []
@@ -300,7 +301,6 @@ class pyredictit:
         raw_market_data = self.browser.get(market_link).json()['Markets']
         for market in raw_market_data:
             for contract in market['Contracts']:
-                print(contract['TickerSymbol'])
                 if list(type_.keys())[0].title() == 'Long' and buy_sell == 'sell':
                     new_contract = Contract(type_='long', sell=contract[list(type_.values())[0]], buy='0.00',
                                             buy_offers=0, sell_offers=0, avg_price='0.00', gain_loss='0.00',
