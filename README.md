@@ -13,6 +13,8 @@ Things you can do with this currently are:
 - Summarize all of your current contracts.
 - Look up & purchase shares of contracts you don't currently own
 
+UPDATE 1/26/2017 - the number 1 question I've been getting about this is "will it steal my login and password," and the answer is *of course not*, <b>but don't take my word for it!</b> Lines 202-213 are the parts where authentication is handled specifically, and I suspect that even people who don't fully understand Python's syntax will be able to see and verify for themselves that this information isn't transmitted anywhere beyond PI's server.
+
 INSTALLATION:
 
 1. Go to https://www.python.org/downloads/
