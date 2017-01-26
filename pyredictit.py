@@ -63,13 +63,13 @@ class Contract:
             if float(self.sell[:-1]) - float(self.avg_price[:-1]) > 0:
                 return f"If you sold all of your shares now, you would earn ${str(float(float(self.sell[:-1]) - float(self.avg_price[:-1])) * self.number_of_shares * 0.01)}"
             else:
-                return f"If you sold all of your shares now, you would lose ${str(float(float(self.sell[:-1]) - float(self.avg_price[:-1])) * self.number_of_shares * 0.01 + (float(self.number_of_shares) * float(self.average_price)))}"
-        except ValueError:
-            return "Contract has ended."
+                return f"If you sold all of your shares now, you would lose ${str(float(float(self.sell[:-1]) - float(self.avg_price[:-1])) * self.number_of_shares * 0.01 + (float(self.number_of_shares) * float(self.avg_price[:-1])) * 0.01)}"
+        except ValueError as e:
+            return e
 
     @property
     def estimate_best_result(self):
-        return f"If this contract resolves to {self.type_}, you would earn ${(1 - float(self.avg_price[:1])) * self.number_of_shares * 0.01 * -1}. Otherwise, you would lose ${float(self.avg_price[:1]) * self.number_of_shares * 0.01 * -1 - (float(self.number_of_shares) * float(self.avg_price[:-1])) * 0.01}}}"
+        return f"If this contract resolves to {self.type_}, you would earn ${1 - (float(self.avg_price[:1])) * self.number_of_shares * 0.01 * -1}. Otherwise, you would lose ${float(self.avg_price[:1]) * self.number_of_shares * 0.01 * -1 - (float(self.number_of_shares) * float(self.avg_price[:-1])) * 0.01}}}"
 
     @property
     def implied_odds(self):
