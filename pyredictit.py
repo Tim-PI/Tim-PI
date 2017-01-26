@@ -1,4 +1,5 @@
 import datetime
+from time import sleep
 from urllib.request import urlopen
 import mechanicalsoup
 import re
@@ -177,6 +178,7 @@ class pyredictit:
         self.available = None
         self.invested = None
         self.browser = mechanicalsoup.Browser()
+        self.browser.session.headers.update({'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.100 Safari/537.36'})
 
     def update_balances(self):
         my_shares_page = self.browser.get('https://www.predictit.org/Profile/MyShares')
@@ -212,9 +214,26 @@ class pyredictit:
         self.browser.submit(login_form, login_page.url)
         return self.browser
 
-    def monitor_price_of_contract(self, contract):
-        contract.update(self)
+    def trigger_stop_loss(self, contract, number_of_shares, trigger_price):
+        contract.sell(api=self, number_of_shares=number_of_shares, sell_price=trigger_price)
+
+    def monitor_price_of_contract(self, contract, trigger_price, monitor_type, number_of_shares=None):
+        while True:
+            contract.update(self)
+            if monitor_type == 'stop_loss':
+                if contract.latest <= trigger_price:
+                    contract.sell(api=self, number_of_shares=number_of_shares, sell_price=trigger_price)
+            elif monitor_type == 'buy_at':
+                if contract.latest <= trigger_price:
+                    contract.buy(api=self, number_of_shares=number_of_shares, sell_price=trigger_price)
+            elif monitor_type == 'generic':
+                print(contract.latest)
         return contract
+
+    def set_stop_loss(self, contract, stop_loss):
+        while True:
+            sleep(2)
+            contract = self.monitor_price_of_contract(contract)
 
     def get_my_contracts(self):
         self.my_contracts = []
