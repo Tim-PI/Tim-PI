@@ -30,7 +30,8 @@ INSTALLATION:
 TODO:
 * stop loss and buy-at functionality
 * C O M M E N T S
-* T E S T S
+* UNIT TESTS
+* DOC TESTS
 * Check volumes and current prices
 * Custom Exception classes
 * setup.py script
