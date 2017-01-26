@@ -1,4 +1,5 @@
 import datetime
+from urllib.request import urlopen
 import mechanicalsoup
 import re
 
@@ -9,8 +10,8 @@ def chunks(l, n):
 
 
 class Contract:
-    def __init__(self, market, cid, name, type_, shares, avg_price,
-                 buy_offers, sell_offers, gain_loss, latest, buy, sell):
+    def __init__(self, market, cid, name, type_, shares, avg_price, buy_offers,
+                 sell_offers, gain_loss, latest, buy, sell, ticker):
         self.timestamp = datetime.datetime.now()
         self.market = market
         self.cid = cid
@@ -28,6 +29,7 @@ class Contract:
         self.latest = latest
         self.buy = buy
         self.sell = sell
+        self.ticker = ticker
 
     @property
     def shares(self):
@@ -210,6 +212,9 @@ class pyredictit:
         self.browser.submit(login_form, login_page.url)
         return self.browser
 
+    def monitor_price_of_contract(self, contract_id):
+        return
+
     def get_my_contracts(self):
         self.my_contracts = []
         my_shares = self.browser.get('https://www.predictit.org/Profile/GetSharesAjax')
@@ -233,7 +238,12 @@ class pyredictit:
                     except AttributeError:
                         pass
                     parsed_market_data.append(string)
+                for line in urlopen(f'https://www.predictit.org/Contract/{cid}/#data').read().splitlines():
+                    if 'ChartTicker' in str(line):
+                        ticker = re.search(pattern="= '(.*)';", string=str(line)).group(1)
+                        break
                 parsed_market_data.insert(1, cid)
+                parsed_market_data.append(ticker)
                 contract = Contract(*parsed_market_data)
                 self.my_contracts.append(contract)
 
@@ -244,7 +254,7 @@ class pyredictit:
                 print('------')
                 print(contract.timestamp)
                 print(contract.market)
-                print(contract.name)
+                print(contract.ticker)
                 print(contract.shares)
                 print(contract.gain_or_loss)
                 print(contract.average_price)
@@ -290,32 +300,37 @@ class pyredictit:
         raw_market_data = self.browser.get(market_link).json()['Markets']
         for market in raw_market_data:
             for contract in market['Contracts']:
+                print(contract['TickerSymbol'])
                 if list(type_.keys())[0].title() == 'Long' and buy_sell == 'sell':
                     new_contract = Contract(type_='long', sell=contract[list(type_.values())[0]], buy='0.00',
                                             buy_offers=0, sell_offers=0, avg_price='0.00', gain_loss='0.00',
                                             latest=contract['LastTradePrice'], market=market['Name'],
-                                            name=contract['Name'], shares='0', cid=contract['ID']
+                                            name=contract['Name'], shares='0', cid=contract['ID'],
+                                            ticker=contract['TickerSymbol']
                                             )
                     contracts.append(new_contract)
                 elif list(type_.keys())[0].title() == 'Short' and buy_sell == 'sell':
                     new_contract = Contract(type_='short', sell=contract[list(type_.values())[0]], buy='0.00',
                                             buy_offers=0, sell_offers=0, avg_price='0.00', gain_loss='0.00',
                                             latest=contract['LastTradePrice'], market=market['Name'],
-                                            name=contract['Name'], shares='0', cid=contract['ID']
+                                            name=contract['Name'], shares='0', cid=contract['ID'],
+                                            ticker=contract['TickerSymbol']
                                             )
                     contracts.append(new_contract)
                 elif list(type_.keys())[0].title() == 'Long' and buy_sell == 'buy':
                     new_contract = Contract(type_='long', sell='0.00', buy=contract[list(type_.values())[0]],
                                             buy_offers=0, sell_offers=0, avg_price='0.00', gain_loss='0.00',
                                             latest=contract['LastTradePrice'], market=market['Name'],
-                                            name=contract['Name'], shares='0', cid=contract['ID']
+                                            name=contract['Name'], shares='0', cid=contract['ID'],
+                                            ticker=contract['TickerSymbol']
                                             )
                     contracts.append(new_contract)
                 elif list(type_.keys())[0].title() == 'Short' and buy_sell == 'buy':
                     new_contract = Contract(type_='short', sell='0.00', buy=contract[list(type_.values())[0]],
                                             buy_offers=0, sell_offers=0, avg_price='0.00', gain_loss='0.00',
                                             latest=contract['LastTradePrice'], market=market['Name'],
-                                            name=contract['Name'], shares='0', cid=contract['ID']
+                                            name=contract['Name'], shares='0', cid=contract['ID'],
+                                            ticker=contract['TickerSymbol']
                                             )
                     contracts.append(new_contract)
         return contracts
