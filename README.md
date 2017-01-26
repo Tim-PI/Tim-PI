@@ -30,7 +30,6 @@ INSTALLATION:
 6. Use it like a Python module!
 
 TODO:
-* stop loss and buy-at functionality
 * C O M M E N T S
 * UNIT TESTS
 * DOC TESTS
@@ -38,6 +37,7 @@ TODO:
 * Custom Exception classes
 * setup.py script
 * Adding to pip
+* stop loss and buy-at functionality - on hold, waiting for clarification from PI regarding automated trading.
 * <s>Look up & purchase shares of contracts you don't currently own</s> - added 1/25/2017!
 
 HOW YOU CAN HELP:
